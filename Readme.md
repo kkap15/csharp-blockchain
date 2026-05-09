@@ -22,7 +22,7 @@ git clone https://github.com/<your-username>/minichain.git
 cd minichain
 dotnet restore
 dotnet test
-dotnet run --project src/MiniChain.Cli
+dotnet run --project MiniChain.Cli
 ```
 
 You should see a chain printed, the message `Chain valid? True`, then a tampering simulation that flips it to `Chain valid? False`.
@@ -42,11 +42,9 @@ You should see a chain printed, the message `Chain valid? True`, then a tamperin
 ## Project layout
 
 ```
-src/
-  MiniChain.Core/   # Block, Blockchain, hashing utilities
-  MiniChain.Cli/    # Demo console app
-tests/
-  MiniChain.Core.Tests/
+MiniChain.Core/    # Block, Blockchain, hashing utilities
+MiniChain.Cli/     # Demo console app
+MiniChain.Tests/   # Unit tests
 ```
 
 The split between `Core` and `Cli` exists so that Weekend 5's networking project can also reference `Core` without dragging in console-app concerns. Keeping the domain logic free of I/O from day one avoids a painful refactor later.
