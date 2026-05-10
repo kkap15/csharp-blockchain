@@ -55,4 +55,13 @@ public sealed class Blockchain(int difficulty = 3, IMiner? miner = null) : IBloc
         
         return true;
     }
+    
+    public IBlock MineFromMempool(IMempool mempool, int count)
+    {
+        var transactions = mempool.Take(count);
+        var block = AddBlock(transactions);
+        mempool.Remove(block.Transactions);
+        
+        return block;
+    }
 }

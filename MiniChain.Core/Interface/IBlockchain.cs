@@ -8,5 +8,5 @@ public interface IBlockchain
     public IBlock Tip { get; }
     public IBlock AddBlock(IReadOnlyList<ITransaction> transactions);
     public bool IsValid();
-    
+    public IBlock MineFromMempool(IMempool mempool, int count);
 }
