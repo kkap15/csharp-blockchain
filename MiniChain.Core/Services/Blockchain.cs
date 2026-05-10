@@ -45,7 +45,6 @@ public sealed class Blockchain(int difficulty = 3, IMiner? miner = null) : IBloc
         var expectedGenesisHash = Block.CreateGenesis().ComputeHash();
         if (_blocks[0].ComputeHash() != expectedGenesisHash)
         {
-             Console.WriteLine("FAIL: genesis hash");
             return false;
         }
 

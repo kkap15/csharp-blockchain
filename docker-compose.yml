@@ -1,0 +1,4 @@
+services:
+  minichain:
+    build: .
+    image: minichain:latest
