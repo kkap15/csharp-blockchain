@@ -27,6 +27,14 @@ dotnet run --project MiniChain.Cli
 
 You will be dropped into an interactive CLI. Run `wallet new` to generate a wallet, `mine` to earn your first coins, and `balance` to see your balance. Type `quit` to exit.
 
+To run the Blazor web UI instead:
+
+```bash
+dotnet run --project MiniChain.Web
+```
+
+Open the URL shown in the terminal. Create a wallet, mine blocks, send transactions, and explore the chain — all from the browser. Works on iOS Safari too.
+
 ## What's in each weekend
 
 ### Weekend 1 — Blocks, hashing, tamper detection
@@ -66,9 +74,10 @@ You will be dropped into an interactive CLI. Run `wallet new` to generate a wall
 ```
 MiniChain.Core/
   Interface/   # IBlock, IBlockchain, ITransaction, IWallet, IMiner, IMempool, INode
-  Models/      # Transaction
+  Models/      # WalletFile
   Services/    # Block, Blockchain, Miner, Wallet, Mempool, Node
-MiniChain.Cli/     # Demo console app
+MiniChain.Cli/     # Interactive CLI (wallet new/load, balance, send, mine, chain)
+MiniChain.Web/     # Blazor Server frontend (Dashboard, Chain, Wallet, Mempool pages)
 MiniChain.Tests/   # Unit tests
 ```
 
