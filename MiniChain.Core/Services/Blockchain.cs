@@ -1,29 +1,27 @@
-namespace MiniChain.Core;
+using MiniChain.Core.Interface;
 
-public sealed class Blockchain
+namespace MiniChain.Core.Services;
+
+public sealed class Blockchain(int difficulty = 3, IMiner? miner = null) : IBlockchain
 {
-    private readonly List<Block> _blocks;
-    public IReadOnlyList<Block> Blocks => _blocks;
-    public Block Tip => _blocks.Last();
-    public int Height => Blocks.Count - 1;
-    public int Difficulty { get; }
-    
-    public Blockchain(int difficulty = 3)
-    {
-        _blocks = [Block.CreateGenesis()];
-        Difficulty = difficulty;
-    }
+    private readonly List<IBlock> _blocks = [Block.CreateGenesis()];
+    private readonly IMiner _miner = miner ?? new Miner();
+    public IReadOnlyList<IBlock> Blocks => _blocks;
+    public IBlock Tip => _blocks.Last();
+    public int Height => _blocks.Count - 1;
+    public int Difficulty { get; } = difficulty;
 
-    public Block AddBlock(IEnumerable<string> transactions)
+    public IBlock AddBlock(IReadOnlyList<ITransaction> transactions)
     {
+        
         var tip = Tip;
-        var newBlock = new Block (
+        var newBlock = new Block(
             tip.Index + 1,
             DateTimeOffset.UtcNow,
             tip.ComputeHash(),
             transactions
             );
-        Miner.Mine(newBlock, Difficulty);
+        _miner.Mine(newBlock, Difficulty);
         _blocks.Add(newBlock);
         return _blocks.Last();
     }
@@ -51,7 +49,8 @@ public sealed class Blockchain
                 return false;
             }
             if (current.PreviousHash != previous.ComputeHash()) return false;
-            if (!Miner.MeetsTarget(current.ComputeHash(), Difficulty)) return false;
+            if (!_miner.MeetsTarget(current.ComputeHash(), Difficulty)) return false;
+            if (current.Transactions.Any(t => !t.IsValid())) return false;
         }
         
         return true;

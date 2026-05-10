@@ -1,4 +1,4 @@
-﻿using MiniChain.Core;
+﻿using MiniChain.Core.Services;
 
 namespace MiniChain.Tests;
 

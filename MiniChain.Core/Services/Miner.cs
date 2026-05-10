@@ -1,8 +1,10 @@
-namespace MiniChain.Core;
+using MiniChain.Core.Interface;
 
-public static class Miner
+namespace MiniChain.Core.Services;
+
+public sealed class Miner : IMiner
 {
-    public static string? Mine(Block block, int difficulty)
+    public string? Mine(IBlock block, int difficulty)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(difficulty);
         block.Nonce = 0;
@@ -20,7 +22,7 @@ public static class Miner
         return hash;
     }
     
-    public static bool MeetsTarget(string hash, int difficulty)
+    public bool MeetsTarget(string hash, int difficulty)
     {
         if (hash.StartsWith(new string('0', difficulty)))
         {
