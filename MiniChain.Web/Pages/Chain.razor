@@ -1,0 +1,45 @@
+@page "/chain"
+@inject Services.ChainService ChainService
+@implements  IDisposable
+
+<h1>Chain Explorer</h1>
+
+@foreach (var block in ChainService.Blockchain.Blocks)
+{
+    <div style="border: 1px solid #ccc; margin: 8px 0; padding: 12px; border-radius: 4px;">                                                                                                                                       
+          <p><strong>Block #@block.Index</strong> — @block.Timestamp.ToString("HH:mm:ss")</p>                                                                                                                                       
+          <p>Hash: <code>@block.ComputeHash()[..12]...</code></p>                                                                                                                                                                   
+          <p>Prev: <code>@block.PreviousHash[..12]...</code></p>                                                                                                                                                                    
+          <p>Nonce: @block.Nonce | Transactions: @block.Transactions.Count</p>                                                                                                                                                      
+                                                                                                                                                                                                                                    
+          @foreach (var tx in block.Transactions)                                                                                                                                                                                   
+          {                                                                                                                                                                                                                         
+              <div style="margin-left: 16px; font-size: 0.9em; color: #555;">
+                  @if (tx.IsCoinbase)                                                                                                                                                                                               
+                  {                                                                                                                                                                                                                 
+                      <span>🪙 Coinbase → @tx.To[..Math.Min(12, tx.To.Length)]... (+@tx.Amount)</span>                                                                                                                                                      
+                  }                                                                                                                                                                                                                 
+                  else                                     
+                  {                                                                                                                                                                                                                 
+                      <span>@tx.From[..Math.Min(12, tx.From.Length)]... → @tx.To[..Math.Min(12, tx.To.Length)]... (@tx.Amount)</span>
+                  }                                                                                                                                                                                                                 
+              </div>
+          }                                                                                                                                                                                                                         
+      </div>                                               
+  }
+
+  @code {
+
+      protected override void OnInitialized()
+      {
+          ChainService.OnChange += Refresh;
+      }
+
+      private void Refresh() => InvokeAsync(StateHasChanged);
+
+      public void Dispose()
+      {
+          ChainService.OnChange -= Refresh;
+      }
+
+  }

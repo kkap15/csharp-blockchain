@@ -1,0 +1,62 @@
+@page "/wallet"
+@inject Services.ChainService ChainService
+@implements IDisposable
+@using MiniChain.Core.Services
+
+<h1>Wallet</h1>
+
+@if (ChainService.Wallet is null)
+{
+    <button @onclick="CreateWallet">Create New Wallet</button>
+}
+else
+{
+    <p>Public Key: <code>@ChainService.Wallet.PublicKeyHex[..12]...</code></p>
+    <p>Confirmed Balance: <strong>@ChainService.Blockchain.GetBalance(ChainService.Wallet.PublicKeyHex)</strong></p>
+    <p>Pending Spend: <strong>@PendingSpend()</strong></p>
+    <p>Available: <strong>@Available()</strong></p>
+
+    <h3>Send</h3>
+    <input @bind="SendTo" placeholder="Recipient public key" style="width: 400px;" />
+    <input @bind="SendAmount" placeholder="Amount" type="number" />
+    <button @onclick="Send">Send</button>
+    @if (!string.IsNullOrEmpty(SendMessage))
+    {
+        <p>@SendMessage</p>
+    }
+}
+
+@code {
+    private string SendTo = "";
+    private decimal SendAmount;
+    private string SendMessage = "";
+
+    private void CreateWallet()
+    {
+        ChainService.Wallet = new MiniChain.Core.Services.Wallet();
+        ChainService.NotifyStateChanged();
+    }
+
+    private void Send()
+    {
+        if (ChainService.Wallet is null) return;
+        var tx = new Transaction(ChainService.Wallet.PublicKeyHex, SendTo, SendAmount, false);
+        tx.Sign(ChainService.Wallet);
+        SendMessage = ChainService.Mempool.Submit(tx, ChainService.Blockchain)
+            ? $"Accepted: {SendAmount} queued to {SendTo[..Math.Min(12, SendTo.Length)]}..."
+            : "Rejected: insufficient balance or invalid transaction.";
+        ChainService.NotifyStateChanged();
+    }
+
+    private decimal PendingSpend() =>
+        ChainService.Mempool.Pending
+            .Where(t => t.From == ChainService.Wallet!.PublicKeyHex)
+            .Sum(t => t.Amount);
+
+    private decimal Available() =>
+        ChainService.Blockchain.GetBalance(ChainService.Wallet!.PublicKeyHex) - PendingSpend();
+
+    protected override void OnInitialized() => ChainService.OnChange += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+    public void Dispose() => ChainService.OnChange -= Refresh;
+}

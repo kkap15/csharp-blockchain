@@ -1,0 +1,59 @@
+@page "/Mempool"
+@inject Services.ChainService ChainService
+@implements IDisposable
+<h3>Mempool</h3>
+
+@if (!ChainService.Mempool.Pending.Any())
+{
+    <p>No pending transactions.</p>
+}
+else
+{
+    <table>
+        <thead>
+        <tr>
+            <th>From</th>
+            <th>To</th>                                                                                                                                                                                                       
+            <th>Amount</th>
+        </tr>                                                                                                                                                                                                                 
+        </thead>                                         
+        <tbody>
+        @foreach (var tx in ChainService.Mempool.Pending)
+        {                                                                                                                                                                                                                     
+            <tr>
+                <td><code>@tx.From[..12]...</code></td>                                                                                                                                                                       
+                <td><code>@tx.To[..Math.Min(12, tx.To.Length)]...</code></td>                                                                                                                                                 
+                <td>@tx.Amount</td>
+            </tr>                                                                                                                                                                                                             
+        }                                            
+        </tbody>                                                                                                                                                                                                                  
+    </table>
+}
+@if (ChainService.Wallet is not null)
+{
+    <button @onclick="Mine">Mine Block</button>
+}                                                                                                                                                                                                                                 
+else
+{                                                                                                                                                                                                                                 
+    <p>Create a wallet first to mine.</p>                
+}
+@code {
+
+    private void Mine()
+    {
+        if (ChainService.Wallet is null) return;
+        ChainService.Blockchain.MineFromMempool(
+            ChainService.Mempool,                                                                                                                                                                                                 
+            ChainService.Mempool.Pending.Count,
+            ChainService.Wallet.PublicKeyHex);                                                                                                                                                                                    
+        ChainService.NotifyStateChanged();
+    }
+
+    protected override void OnInitialized() => ChainService.OnChange += Refresh;
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ChainService.OnChange -= Refresh;
+    }
+}
