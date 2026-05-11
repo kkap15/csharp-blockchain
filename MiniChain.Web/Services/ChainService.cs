@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,7 +26,9 @@ public class ChainService(IServiceScopeFactory scopeFactory) : IHostedService
       var blocks = await repo.LoadAllBlocksAsync();
       if (blocks.Count > 0)
       {
-         Blockchain.ReplaceChain(blocks);
+         var fullChain = new List<IBlock> { Block.CreateGenesis() };
+         fullChain.AddRange(blocks);
+         Blockchain.ReplaceChain(fullChain);
       }
 
       if (File.Exists("wallet.json"))
