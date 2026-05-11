@@ -7,4 +7,5 @@ public interface IWallet
     public bool Verify(string data, string signatureHex);
     public static abstract IWallet ImportWalletFromPrivateKey(string privateKey);
     public string ExportPrivateKey();
+    public void SaveWallet(string path);
 }

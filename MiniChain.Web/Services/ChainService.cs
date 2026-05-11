@@ -11,11 +11,10 @@ using MiniChain.Web.Data;
 
 namespace MiniChain.Web.Services;
 
-public class ChainService(IServiceScopeFactory scopeFactory) : IHostedService
+public class ChainService(IServiceScopeFactory scopeFactory, WalletService _walletService) : IHostedService
 {
    public Blockchain Blockchain { get; } = new(3);
    public Mempool Mempool { get; } = new();
-   public IWallet? Wallet { get; set; }
    public event Action? OnChange;
    public void NotifyStateChanged() => OnChange?.Invoke();
 
@@ -30,11 +29,7 @@ public class ChainService(IServiceScopeFactory scopeFactory) : IHostedService
          fullChain.AddRange(blocks);
          Blockchain.ReplaceChain(fullChain);
       }
-
-      if (File.Exists("wallet.json"))
-      {
-         Wallet = MiniChain.Core.Services.Wallet.LoadWallet("wallet.json");
-      }
+      _walletService.LoadAll();
    }
 
    public async Task MineBlockAsync(string minerAddress)

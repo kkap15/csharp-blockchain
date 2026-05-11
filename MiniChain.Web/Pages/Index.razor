@@ -1,6 +1,12 @@
-﻿@page "/"                                                                                                                                                                                                                         
-  @inject Services.ChainService Chain                                                                                                                                                                                 
-  @implements IDisposable                                                                                                                                                                                                           
+﻿@page "/"
+@attribute [Authorize]
+
+@inject ChainService Chain      
+@inject WalletService Wallet
+@inject AuthenticationStateProvider AuthStateProvider                                                                                                                                                                               
+@using System.Security.Claims
+@using MiniChain.Web.Services
+@implements IDisposable                                                                                                                                                                                                           
                                                                                                                                                                                                                                     
   <h1>Dashboard</h1>                                                                                                                                                                                                                
                                                                                                                                                                                                                                     
@@ -12,27 +18,35 @@
       @(_mining ? "Mining" : "Mine Block")
   </button>                                                                                                                                                                                       
                                                                                                                                                                                                                                   
-  @if (Chain.Wallet is null)                                                                                                                                                                                                        
+  @if (Wallet.GetWallet(_userId) is null)                                                                                                                                                                                                        
   {                                                     
       <p>No wallet loaded — go to <a href="/wallet">Wallet</a> to create one.</p>
   }                                                                                                                                                                                                                                 
    
   @code {
       private bool _mining;
+      private string? _userId;
       
-      protected override void OnInitialized()           
-      {                                                                                                                                                                                                                             
+      protected override async Task OnInitializedAsync()
+      {
+          _userId = await GetUserId();
           Chain.OnChange += Refresh;                    
       }
 
       private async Task Mine()                                                                                                                                                                                                           
       {
-          if (Chain.Wallet is null) return;    
+          if (Wallet.GetWallet(_userId) is null) return;    
           _mining =  true;
-          await Chain.MineBlockAsync(Chain.Wallet.PublicKeyHex);
+          await Chain.MineBlockAsync(Wallet.GetWallet(_userId)!.PublicKeyHex);
           Chain.NotifyStateChanged();       
           _mining = false;
-      }                                                                                                                                                                                                                             
+      }
+
+      private async Task<string?> GetUserId()
+      {
+          var state = await AuthStateProvider.GetAuthenticationStateAsync();
+          return state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;                                                                                                                                                                                         
+      }
                                                                                                                                                                                                                                     
       private void Refresh() => InvokeAsync(StateHasChanged);                                                                                                                                                                       
                                                         

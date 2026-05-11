@@ -24,8 +24,8 @@ project.fragment.lock.json
 .DS_Store
 Thumbs.db
 
-# Wallet persistence
-wallet.json
+# Wallet persistence (covers wallet.json and wallet_{userId}.json from Auth0)
+wallet*.json
 
 # SQLite database
 *.db

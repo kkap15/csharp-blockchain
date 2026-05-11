@@ -1,4 +1,6 @@
 @page "/chain"
+@attribute [Authorize]
+
 @inject Services.ChainService ChainService
 @implements  IDisposable
 
@@ -9,7 +11,7 @@
     <div style="border: 1px solid #ccc; margin: 8px 0; padding: 12px; border-radius: 4px;">                                                                                                                                       
           <p><strong>Block #@block.Index</strong> — @block.Timestamp.ToString("HH:mm:ss")</p>                                                                                                                                       
           <p>Hash: <code>@block.ComputeHash()[..12]...</code></p>                                                                                                                                                                   
-          <p>Prev: <code>@block.PreviousHash[..12]...</code></p>                                                                                                                                                                    
+          <p>Prev: <code>@block.PreviousHash[..12]...</code></p>                                                                                                                                          
           <p>Nonce: @block.Nonce | Transactions: @block.Transactions.Count</p>                                                                                                                                                      
                                                                                                                                                                                                                                     
           @foreach (var tx in block.Transactions)                                                                                                                                                                                   

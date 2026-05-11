@@ -1,9 +1,18 @@
-@page "/Mempool"
-@inject Services.ChainService ChainService
+@page "/mempool"
+@attribute [Authorize]
+
+@inject ChainService Chain
+@inject WalletService Wallet
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@using System.Security.Claims
+@using MiniChain.Web.Services
+
 @implements IDisposable
+
 <h3>Mempool</h3>
 
-@if (!ChainService.Mempool.Pending.Any())
+@if (!Chain.Mempool.Pending.Any())
 {
     <p>No pending transactions.</p>
 }
@@ -18,7 +27,7 @@ else
         </tr>                                                                                                                                                                                                                 
         </thead>                                         
         <tbody>
-        @foreach (var tx in ChainService.Mempool.Pending)
+        @foreach (var tx in Chain.Mempool.Pending)
         {                                                                                                                                                                                                                     
             <tr>
                 <td><code>@tx.From[..12]...</code></td>                                                                                                                                                                       
@@ -29,7 +38,7 @@ else
         </tbody>                                                                                                                                                                                                                  
     </table>
 }
-@if (ChainService.Wallet is not null)
+@if (Wallet.GetWallet(_userId) is not null)
 {
     <button @onclick="Mine" disabled="@_mining">
         @(_mining ? "Mining" : "Mine Block")
@@ -41,20 +50,33 @@ else
 }
 @code {
     private bool _mining;
+    private string? _userId;
+    
     private async Task Mine()
     {
-        if (ChainService.Wallet is null) return;
+        if (Wallet.GetWallet(_userId) is null) return;
         _mining = true; 
-        await ChainService.MineBlockAsync(ChainService.Wallet.PublicKeyHex);                                                                                                                                                                                    
-        ChainService.NotifyStateChanged();
+        await Chain.MineBlockAsync(Wallet.GetWallet(_userId)!.PublicKeyHex);                                                                                                                                                                                    
+        Chain.NotifyStateChanged();
         _mining = false;
     }
 
-    protected override void OnInitialized() => ChainService.OnChange += Refresh;
+    protected override async Task OnInitializedAsync()
+    {
+        _userId = await GetUserId();
+        Chain.OnChange += Refresh;
+    }
+
+    private async Task<string?> GetUserId()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        return state.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+
     private void Refresh() => InvokeAsync(StateHasChanged);
 
     public void Dispose()
     {
-        ChainService.OnChange -= Refresh;
+        Chain.OnChange -= Refresh;
     }
 }

@@ -1,18 +1,24 @@
 @page "/wallet"
-@inject Services.ChainService ChainService
+@attribute [Authorize]
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject WalletService WalletService
+@inject ChainService ChainService
 @implements IDisposable
+@using System.Security.Claims
 @using MiniChain.Core.Services
+@using MiniChain.Web.Services
 
 <h1>Wallet</h1>
 
-@if (ChainService.Wallet is null)
+@if (WalletService.GetWallet(_userId) is null)
 {
     <button @onclick="CreateWallet">Create New Wallet</button>
 }
 else
 {
-    <p>Public Key: <code>@ChainService.Wallet.PublicKeyHex[..12]...</code></p>
-    <p>Confirmed Balance: <strong>@ChainService.Blockchain.GetBalance(ChainService.Wallet.PublicKeyHex)</strong></p>
+    <p>Public Key: <code>@WalletService.GetWallet(_userId)!.PublicKeyHex[..12]...</code></p>
+    <p>Confirmed Balance: <strong>@ChainService.Blockchain.GetBalance(WalletService.GetWallet(_userId)!.PublicKeyHex)</strong></p>
     <p>Pending Spend: <strong>@PendingSpend()</strong></p>
     <p>Available: <strong>@Available()</strong></p>
 
@@ -30,25 +36,31 @@ else
     private string _sendTo = "";
     private decimal _sendAmount;
     private string _sendMessage = "";
-
-    private void CreateWallet()
+    private string? _userId;
+    
+    private async Task CreateWallet()
     {
-        var w = new MiniChain.Core.Services.Wallet();
-        w.SaveWallet("wallet.json");
-        ChainService.Wallet = w;
+        var wallet = new MiniChain.Core.Services.Wallet();
+        var userId = await GetUserId();
+        WalletService.SetWallet(userId!, wallet);
         ChainService.NotifyStateChanged();
+    }
+
+    private async Task<string?> GetUserId()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        return state.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     }
 
     private void Send()
     {
-        if (ChainService.Wallet is null) return;
         if (_sendAmount <= 0 || string.IsNullOrWhiteSpace(_sendTo))
         {
             _sendMessage = "Enter a recipient and an amount greater than 0";
             return;
         }
-        var tx = new Transaction(ChainService.Wallet.PublicKeyHex, _sendTo, _sendAmount, false);
-        tx.Sign(ChainService.Wallet);
+        var tx = new Transaction(WalletService.GetWallet(_userId)!.PublicKeyHex, _sendTo, _sendAmount, false);
+        tx.Sign(WalletService.GetWallet(_userId)!);
         _sendMessage = ChainService.Mempool.Submit(tx, ChainService.Blockchain)
             ? $"Accepted: {_sendAmount} queued to {_sendTo[..Math.Min(12, _sendTo.Length)]}..."
             : "Rejected: insufficient balance or invalid transaction.";
@@ -57,13 +69,17 @@ else
 
     private decimal PendingSpend() =>
         ChainService.Mempool.Pending
-            .Where(t => t.From == ChainService.Wallet!.PublicKeyHex)
+            .Where(t => t.From == WalletService.GetWallet(_userId)!.PublicKeyHex)
             .Sum(t => t.Amount);
 
     private decimal Available() =>
-        ChainService.Blockchain.GetBalance(ChainService.Wallet!.PublicKeyHex) - PendingSpend();
+        ChainService.Blockchain.GetBalance(WalletService.GetWallet(_userId)!.PublicKeyHex) - PendingSpend();
 
-    protected override void OnInitialized() => ChainService.OnChange += Refresh;
+    protected override async Task OnInitializedAsync()
+    {
+        _userId = await GetUserId();
+        ChainService.OnChange += Refresh;
+    }
     private void Refresh() => InvokeAsync(StateHasChanged);
     public void Dispose() => ChainService.OnChange -= Refresh;
 }

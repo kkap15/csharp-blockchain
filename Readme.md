@@ -16,11 +16,12 @@ Each milestone ships something working and demoable. The current state of the ch
 | CLI wallet & polish | ✅ |
 | SQLite persistence & Blazor frontend | ✅ |
 | Merkle trees | ✅ |
+| REST API & Auth0 authentication | ✅ |
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/<your-username>/minichain.git
+git clone https://github.com/your-username/minichain.git
 cd minichain
 dotnet restore
 dotnet test
@@ -33,6 +34,15 @@ To run the Blazor web UI instead:
 
 ```bash
 dotnet run --project MiniChain.Web
+```
+
+The web app requires Auth0 credentials. Set these before running (or add them to `MiniChain.Web/appsettings.Development.json`):
+
+```bash
+export Auth0__Domain=your-tenant.auth0.com
+export Auth0__ClientId=your-client-id
+export Auth0__ClientSecret=your-client-secret
+export Auth0__Audience=https://your-api-audience
 ```
 
 Open the URL shown in the terminal. Create a wallet, mine blocks, send transactions, and explore the chain — all from the browser. Works on iOS Safari too.
@@ -66,7 +76,7 @@ Open the URL shown in the terminal. Create a wallet, mine blocks, send transacti
 - Longest-chain rule: a node only accepts a peer's chain if it is strictly longer and valid — the same consensus rule Bitcoin uses.
 
 ### CLI wallet & polish
-- **Wallet persistence** — `ExportPrivateKey()` serializes the P-256 private key to hex; `SaveWallet(path)` writes it to a `WalletFile` JSON record; `LoadWallet(path)` reconstructs the full key pair. Identity survives restarts.
+- **Wallet persistence** — `ExportPrivateKey()` serializes the P-256 private key to hex; `SaveWallet(path)` writes it to a `WalletFile` JSON record; `LoadWallet(path)` reconstructs the full key pair; `ImportWalletFromPrivateKey(hex)` does the same from a raw key string. All three are declared on `IWallet` so the contract is explicit. Identity survives restarts.
 - **UTXO balance tracking** — `Blockchain.GetBalance(publicKeyHex)` walks every confirmed transaction and computes the net balance. Coinbase transactions (50 coins per block, `From = 0x00…00`) fund the miner and are excluded from the sender deduction path.
 - **Balance-aware mempool** — `Mempool.Submit(tx, blockchain)` rejects transactions where the sender's confirmed balance is less than the amount. Coinbase transactions bypass this check. `Transaction.IsValid()` remains stateless (signature only).
 - **Interactive CLI** — replaces the hardcoded demo with a command loop: `wallet new`, `wallet load`, `balance`, `send <to> <amount>`, `mine`, `chain`, `quit`.
@@ -83,6 +93,18 @@ Open the URL shown in the terminal. Create a wallet, mine blocks, send transacti
 - **`Block.MerkleRoot`** — computed property on every block, derived on demand from its transactions. Not stored in the database; always recalculated from the transaction data.
 - **`Block.ComputeHash()`** — now commits to the Merkle root instead of the flat transaction concatenation. Changing any single transaction changes the root, which changes the block hash, which breaks the chain — the same tamper-detection property as before but with a structure that can produce compact inclusion proofs.
 
+### REST API & Auth0 authentication
+- **`ChainController`** — a thin ASP.NET controller that exposes blockchain state over HTTP:
+  - `GET /api/blocks` — full chain
+  - `GET /api/block/{index}` — single block by index
+  - `GET /api/mempool` — pending transactions
+  - `GET /api/balance/{publicKey}` — UTXO balance for any address
+  - `POST /api/transactions` — submit a signed transaction (signature verified server-side)
+  - `POST /api/mine` — mine a block and credit the caller's address
+- **Auth0 authentication** — OAuth2/OIDC login and logout via `/Account/Login` and `/Account/Logout`. Users authenticate through Auth0 before accessing the web UI.
+- **JWT Bearer auth on the API** — every `/api/*` endpoint requires a valid JWT. Clients obtain a token from Auth0 and pass it as a `Bearer` header.
+- **`WalletService`** — a singleton that keeps one wallet per authenticated user. Wallets are loaded from `wallet_{userId}.json` on startup and saved automatically on creation, so each user's keys survive restarts independently.
+
 ## Project layout
 
 ```
@@ -92,7 +114,12 @@ MiniChain.Core/
   Services/    # Block, Blockchain, Miner, Wallet, Mempool, Node
   Utilities/   # HashingUtils, MerkleTree
 MiniChain.Cli/     # Interactive CLI (wallet new/load, balance, send, mine, chain)
-MiniChain.Web/     # Blazor Server frontend (Dashboard, Chain, Wallet, Mempool pages)
+MiniChain.Web/
+  Controllers/     # ChainController — REST API (JWT-protected)
+  Models/          # MineRequest, TransactionRequest
+  Pages/
+    Account/       # Login and Logout pages (Auth0)
+  Services/        # ChainService (IHostedService), WalletService (per-user wallets)
 MiniChain.Tests/   # Unit tests
 ```
 
